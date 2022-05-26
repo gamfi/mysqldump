@@ -39,6 +39,7 @@
         "dts-bundle-generator": "^6.0.0",
         "prettier": "^2.4.1",
         "rimraf": "^2.7.1",
+        "rollup": "^2.74.1",
         "rollup-plugin-typescript2": "^0.31.0",
         "tmp": "^0.1.0",
         "ts-node": "^10.4.0",

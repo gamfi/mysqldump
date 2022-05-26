@@ -75,7 +75,7 @@ function assert(condition: unknown, message: string): void {
 // eslint-disable-next-line complexity, import/no-default-export
 export default function main(inputOptions: Options): Observable<ObserveResponse> {
     let connection;
-    const status = new BehaviorSubject({ progress: 0, message: 'Initialing...' });
+    const status = new BehaviorSubject<ObserveResponse>({ progress: 0, message: 'Initialing...' });
     const observable = status.asObservable();
     try {
         // assert the given options have all the required properties
@@ -213,7 +213,7 @@ export default function main(inputOptions: Options): Observable<ObserveResponse>
           if (options.dumpToFile && options.compressFile) {
               await compressFile(options.dumpToFile);
           }
-          status.next({ progress: 100, message: 'Done!' });
+          status.next({ progress: 100, message: 'Done!', dump: res });
         };
 
         observer();
