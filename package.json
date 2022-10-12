@@ -1,6 +1,6 @@
 {
     "name": "@ottimis/mysqldump",
-    "version": "4.0.5",
+    "version": "4.0.6",
     "description": "Create a DUMP from MySQL and return observable",
     "main": "dist/cjs.js",
     "module": "dist/es.js",
