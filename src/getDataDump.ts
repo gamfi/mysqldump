@@ -1,5 +1,5 @@
 import { createWriteStream } from 'fs';
-import { Connection, createConnection } from 'mysql2';
+import { createPool, Pool } from 'mysql2';
 import { format as formatSQL } from 'sql-formatter';
 import { all as merge } from 'deepmerge';
 
@@ -35,13 +35,19 @@ function buildInsertValue(row: QueryRes, table: Table): string {
     return `(${table.columnsOrdered.map(c => row[c]).join(',')})`;
 }
 
-function executeSql(connection: Connection, sql: string): Promise<void> {
+function executeSql(connection: Pool, sql: string): Promise<void> {
     return new Promise((resolve, reject) =>
         connection.query(sql, err =>
             err ? /* istanbul ignore next */ reject(err) : resolve(),
         ),
     );
 }
+
+const endPool = (pool: Pool) => new Promise<void>((resolve, reject) =>
+    pool.end((
+        err => err ? reject(err) : resolve()
+    ))
+);
 
 // eslint-disable-next-line complexity
 async function getDataDump(
@@ -66,15 +72,14 @@ async function getDataDump(
         : (sql: string) => sql;
 
     // we open a new connection with a special typecast function for dumping data
-    const connection = createConnection(
-        merge([
-            connectionOptions,
-            {
-                multipleStatements: true,
-                typeCast: typeCast(tables),
-            },
-        ]),
-    );
+    const connection = createPool( merge([
+        connectionOptions,
+        {
+            connectionLimit: 3,
+            multipleStatements: true,
+            typeCast: typeCast(tables),
+        },
+    ]));
 
     const retTables: Array<Table> = [];
     let currentTableLines: Array<string> | null = null;
@@ -223,7 +228,7 @@ async function getDataDump(
     }
 
     // clean up our connections
-    await ((connection.end() as unknown) as Promise<void>);
+    await endPool(connection);
 
     if (outFileStream) {
         // tidy up the file stream, making sure writes are 100% flushed before continuing

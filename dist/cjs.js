@@ -526,6 +526,7 @@ function buildInsertValue(row, table) {
 function executeSql(connection, sql) {
     return new Promise((resolve, reject) => connection.query(sql, err => err ? /* istanbul ignore next */ reject(err) : resolve()));
 }
+const endPool = (pool) => new Promise((resolve, reject) => pool.end((err => err ? reject(err) : resolve())));
 // eslint-disable-next-line complexity
 function getDataDump(connectionOptions, options, tables, dumpToFile, status) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -538,9 +539,10 @@ function getDataDump(connectionOptions, options, tables, dumpToFile, status) {
             ? (sql) => sqlFormatter.format(sql, { language: options.formatLanguage })
             : (sql) => sql;
         // we open a new connection with a special typecast function for dumping data
-        const connection = mysql2.createConnection(deepmerge.all([
+        const connection = mysql2.createPool(deepmerge.all([
             connectionOptions,
             {
+                connectionLimit: 3,
                 multipleStatements: true,
                 typeCast: typeCast(tables),
             },
@@ -662,7 +664,7 @@ function getDataDump(connectionOptions, options, tables, dumpToFile, status) {
             }
         }
         // clean up our connections
-        yield connection.end();
+        yield endPool(connection);
         if (outFileStream) {
             // tidy up the file stream, making sure writes are 100% flushed before continuing
             yield new Promise(resolve => {

@@ -1,10 +1,10 @@
 import { createWriteStream, renameSync, createReadStream, unlinkSync, writeFileSync, appendFileSync } from 'fs';
 import { all } from 'deepmerge';
 import { format } from 'sql-formatter';
-import { createConnection } from 'mysql2';
+import { createPool } from 'mysql2';
 import { escape } from 'sqlstring';
 import { createGzip } from 'zlib';
-import { createConnection as createConnection$1 } from 'mysql2/promise';
+import { createConnection } from 'mysql2/promise';
 import { BehaviorSubject } from 'rxjs';
 
 /*! *****************************************************************************
@@ -524,6 +524,7 @@ function buildInsertValue(row, table) {
 function executeSql(connection, sql) {
     return new Promise((resolve, reject) => connection.query(sql, err => err ? /* istanbul ignore next */ reject(err) : resolve()));
 }
+const endPool = (pool) => new Promise((resolve, reject) => pool.end((err => err ? reject(err) : resolve())));
 // eslint-disable-next-line complexity
 function getDataDump(connectionOptions, options, tables, dumpToFile, status) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -536,9 +537,10 @@ function getDataDump(connectionOptions, options, tables, dumpToFile, status) {
             ? (sql) => format(sql, { language: options.formatLanguage })
             : (sql) => sql;
         // we open a new connection with a special typecast function for dumping data
-        const connection = createConnection(all([
+        const connection = createPool(all([
             connectionOptions,
             {
+                connectionLimit: 3,
                 multipleStatements: true,
                 typeCast: typeCast(tables),
             },
@@ -660,7 +662,7 @@ function getDataDump(connectionOptions, options, tables, dumpToFile, status) {
             }
         }
         // clean up our connections
-        yield connection.end();
+        yield endPool(connection);
         if (outFileStream) {
             // tidy up the file stream, making sure writes are 100% flushed before continuing
             yield new Promise(resolve => {
@@ -721,7 +723,7 @@ class DB {
     }
     static connect(options) {
         return __awaiter(this, void 0, void 0, function* () {
-            const instance = new DB(yield createConnection$1(options));
+            const instance = new DB(yield createConnection(options));
             pool.push(instance);
             return instance;
         });
